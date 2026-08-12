@@ -1,0 +1,16 @@
+{
+  "name": "jerry-orchestrator",
+  "version": "0.1.0",
+  "description": "Linear-triggered Claude Code cloud agent orchestrator",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "playwright": "^1.62.1"
+  }
+}
