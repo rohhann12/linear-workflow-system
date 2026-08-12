@@ -10,6 +10,7 @@ const LEVEL_COLOR = { info: chalk.green, warn: chalk.yellow, error: chalk.red };
 // }
 const sessions = new Map();
 let nextMessageId = 1;
+const MAX_LOGS = 1000;
 
 function createSession(id, source, linearIssueId) {
   if (sessions.has(id)) return sessions.get(id);
@@ -21,6 +22,7 @@ function createSession(id, source, linearIssueId) {
     currentStep: null,
     queue: [],
     transcript: [],
+    logs: [],
     branch: `jerry/${id}`,
     emitter: new EventEmitter(),
   };
@@ -46,6 +48,7 @@ function serializeSession(session) {
     currentStep: session.currentStep,
     queuedCount: session.queue.length,
     transcript: session.transcript,
+    logs: session.logs,
     branch: session.branch,
   };
 }
@@ -54,6 +57,8 @@ function emit(session, type, data) {
   const payload = { type, ts: Date.now(), ...data };
   session.emitter.emit('event', payload);
   if (type === 'log') {
+    session.logs.push(payload);
+    if (session.logs.length > MAX_LOGS) session.logs.shift();
     const color = LEVEL_COLOR[data.level] || chalk.green;
     console.log(color(`[${session.id}] ${data.text}`));
   }

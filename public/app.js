@@ -39,6 +39,7 @@ function renderMain(session) {
     </div>
   `;
   session.transcript.forEach(appendMessage);
+  (session.logs || []).forEach(appendLog);
   document.getElementById('sendBtn').onclick = sendMessage;
   document.getElementById('composeInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendMessage();
@@ -113,5 +114,26 @@ document.getElementById('newSessionBtn').onclick = () => {
   selectSession(id);
 };
 
+async function loadLandingStats() {
+  const res = await fetch('/sessions');
+  const list = res.ok ? await res.json() : [];
+  const prCount = list.reduce(
+    (n, s) => n + s.transcript.filter((m) => m.role === 'jerry' && /opened a PR/i.test(m.text)).length,
+    0
+  );
+  const running = list.filter((s) => s.status === 'running').length;
+  document.getElementById('landingStats').innerHTML = `
+    <div class="stat"><div class="n">${list.length}</div><div class="l">sessions</div></div>
+    <div class="stat"><div class="n">${prCount}</div><div class="l">PRs opened</div></div>
+    <div class="stat"><div class="n">${running}</div><div class="l">running now</div></div>
+  `;
+}
+
+document.getElementById('enterBtn').onclick = () => {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+};
+
+loadLandingStats();
 refreshSidebar();
 setInterval(refreshSidebar, 4000);

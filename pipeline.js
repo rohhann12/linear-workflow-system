@@ -3,6 +3,7 @@ const path = require('path');
 const sessions = require('./sessions');
 const { run } = require('./exec');
 const { runClaudeAgent } = require('./agents');
+const { commentOnIssue } = require('./linear');
 
 const REPO_SSH = process.env.GITHUB_REPO_SSH || 'git@github.com:rohhann12/subsearch.git';
 const REPO_SLUG = process.env.GITHUB_REPO || 'rohhann12/subsearch';
@@ -10,21 +11,23 @@ const WORKSPACE_ROOT = path.resolve(__dirname, process.env.WORKSPACE_DIR || '../
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 const BASE_DIR = path.join(WORKSPACE_ROOT, '_base', 'subsearch');
-const BASE_BRANCH = process.env.JERRY_BASE_BRANCH || 'jerry-base';
 
 function repoDir(session) {
   return path.join(WORKSPACE_ROOT, session.id, 'subsearch');
 }
 
-// One persistent clone + a shared local `jerry-base` branch (forked from main)
-// that every session worktree branches off. After a session pushes, jerry-base
-// fast-forwards to include it, so later sessions inherit prior scaffolding
-// (e.g. the ui/ app) instead of redoing it from a stale main every time.
+// One persistent clone shared across sessions (avoids a full re-clone over
+// SSH every time) — but every session's worktree always forks from the
+// latest real `main`, never from another session's unmerged work, so each
+// PR's diff stays scoped to just that session's change.
 async function ensureBaseRepo(session) {
-  if (fs.existsSync(path.join(BASE_DIR, '.git'))) return;
-  fs.mkdirSync(path.dirname(BASE_DIR), { recursive: true });
-  await run(session, 'git', 'git', ['clone', REPO_SSH, BASE_DIR]);
-  await run(session, 'git', 'git', ['checkout', '-b', BASE_BRANCH], { cwd: BASE_DIR });
+  if (!fs.existsSync(path.join(BASE_DIR, '.git'))) {
+    fs.mkdirSync(path.dirname(BASE_DIR), { recursive: true });
+    await run(session, 'git', 'git', ['clone', REPO_SSH, BASE_DIR]);
+    return;
+  }
+  await run(session, 'git', 'git', ['checkout', 'main'], { cwd: BASE_DIR });
+  await run(session, 'git', 'git', ['pull', '--ff-only', 'origin', 'main'], { cwd: BASE_DIR });
 }
 
 async function ensureRepo(session) {
@@ -36,7 +39,7 @@ async function ensureRepo(session) {
   sessions.setStep(session, 'setup');
   await ensureBaseRepo(session);
   fs.mkdirSync(path.dirname(dir), { recursive: true });
-  await run(session, 'git', 'git', ['worktree', 'add', '-b', session.branch, dir, BASE_BRANCH], { cwd: BASE_DIR });
+  await run(session, 'git', 'git', ['worktree', 'add', '-b', session.branch, dir, 'main'], { cwd: BASE_DIR });
   return dir;
 }
 
@@ -90,10 +93,6 @@ async function commitAndPush(session, dir, message) {
   }
   await run(session, 'git', 'git', ['commit', '-m', commitMessage(message)], { cwd: dir });
   await run(session, 'git', 'git', ['push', '-u', 'origin', session.branch], { cwd: dir });
-
-  // fast-forward the shared base branch so the next session's worktree starts
-  // from this work instead of redoing it (e.g. re-scaffolding ui/ every time)
-  await run(session, 'git', 'git', ['branch', '-f', BASE_BRANCH, session.branch], { cwd: BASE_DIR });
   return true;
 }
 
@@ -228,6 +227,9 @@ async function runPipeline(session, message) {
       ? 'Made changes but nothing was committed (no diff produced).'
       : 'Ran into trouble and could not complete the change.';
     sessions.addMessage(session, 'jerry', summary);
+    if (prUrl && !hadPrBefore) {
+      await commentOnIssue(session, `Opened a PR: ${prUrl}${screenshotRelPath ? '' : '\n\n(no preview screenshot — the app never became healthy during this run)'}`);
+    }
   } catch (err) {
     sessions.emit(session, 'log', { level: 'error', text: `[pipeline] crashed: ${err.message}` });
     sessions.addMessage(session, 'jerry', `Something went wrong: ${err.message}`);

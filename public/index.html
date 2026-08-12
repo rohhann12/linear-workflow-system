@@ -6,7 +6,19 @@
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0d1117; color: #e6edf3; display: flex; height: 100vh; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0d1117; color: #e6edf3; height: 100vh; }
+  #landing { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 18px; padding: 24px; }
+  #landing .logo { font-size: 64px; }
+  #landing h1 { font-size: 30px; margin: 0; }
+  #landing p { color: #8b949e; margin: 0; max-width: 460px; line-height: 1.5; }
+  #landing .stats { display: flex; gap: 28px; margin: 6px 0; }
+  #landing .stat { text-align: center; }
+  #landing .stat .n { font-size: 28px; font-weight: 700; }
+  #landing .stat .l { font-size: 12px; color: #8b949e; }
+  #enterBtn { padding: 12px 28px; border-radius: 8px; border: none; background: #238636; color: white; font-size: 15px; cursor: pointer; }
+  #enterBtn:hover { background: #2ea043; }
+  #app { display: none; height: 100vh; }
+  #app.visible { display: flex; }
   #sidebar { width: 260px; border-right: 1px solid #21262d; display: flex; flex-direction: column; }
   #sidebar h1 { font-size: 15px; padding: 14px; margin: 0; border-bottom: 1px solid #21262d; }
   #sessionList { flex: 1; overflow-y: auto; }
@@ -35,13 +47,22 @@
 </style>
 </head>
 <body>
-  <div id="sidebar">
-    <h1>🐺 Jerry</h1>
-    <button id="newSessionBtn">+ New session</button>
-    <div id="sessionList"></div>
+  <div id="landing">
+    <div class="logo">🐺</div>
+    <h1>Welcome to Jerry's work</h1>
+    <p>Tag Jerry on a Linear ticket, or start a chat below, and it clones the repo, writes the code, runs it for real, and opens a PR — screenshot included.</p>
+    <div class="stats" id="landingStats"></div>
+    <button id="enterBtn">Enter →</button>
   </div>
-  <div id="main">
-    <div id="empty">Select or create a session to talk to Jerry.</div>
+  <div id="app">
+    <div id="sidebar">
+      <h1>🐺 Jerry</h1>
+      <button id="newSessionBtn">+ New session</button>
+      <div id="sessionList"></div>
+    </div>
+    <div id="main">
+      <div id="empty">Select or create a session to talk to Jerry.</div>
+    </div>
   </div>
   <script src="app.js"></script>
 </body>
