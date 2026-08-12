@@ -76,6 +76,10 @@ async function selectSession(id) {
   activeId = id;
   if (es) es.close();
 
+  const url = new URL(window.location);
+  url.searchParams.set('session', id);
+  history.replaceState(null, '', url);
+
   const res = await fetch(`/sessions/${id}`);
   const session = res.ok ? await res.json() : { id, status: 'idle', currentStep: null, queuedCount: 0, transcript: [] };
   renderMain(session);
@@ -129,10 +133,18 @@ async function loadLandingStats() {
   `;
 }
 
-document.getElementById('enterBtn').onclick = () => {
+function enterApp() {
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app').classList.add('visible');
-};
+}
+
+document.getElementById('enterBtn').onclick = enterApp;
+
+const deepLinkedSession = new URL(window.location).searchParams.get('session');
+if (deepLinkedSession) {
+  enterApp();
+  selectSession(deepLinkedSession);
+}
 
 loadLandingStats();
 refreshSidebar();

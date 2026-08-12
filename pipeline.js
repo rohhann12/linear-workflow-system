@@ -198,7 +198,7 @@ async function runPipeline(session, message) {
     ]);
 
     sessions.setStep(session, 'build');
-    await run(session, 'docker', 'docker-compose', ['up', '-d', '--build'], { cwd: dir });
+    await run(session, 'docker', 'docker', ['compose', 'up', '-d', '--build'], { cwd: dir });
     const healthy = await waitForHealthy(session, APP_URL);
 
     let screenshotRelPath = null;
