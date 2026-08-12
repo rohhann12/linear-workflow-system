@@ -9,20 +9,34 @@ const REPO_SLUG = process.env.GITHUB_REPO || 'rohhann12/subsearch';
 const WORKSPACE_ROOT = path.resolve(__dirname, process.env.WORKSPACE_DIR || '../workspace');
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
+const BASE_DIR = path.join(WORKSPACE_ROOT, '_base', 'subsearch');
+const BASE_BRANCH = process.env.JERRY_BASE_BRANCH || 'jerry-base';
+
 function repoDir(session) {
   return path.join(WORKSPACE_ROOT, session.id, 'subsearch');
+}
+
+// One persistent clone + a shared local `jerry-base` branch (forked from main)
+// that every session worktree branches off. After a session pushes, jerry-base
+// fast-forwards to include it, so later sessions inherit prior scaffolding
+// (e.g. the ui/ app) instead of redoing it from a stale main every time.
+async function ensureBaseRepo(session) {
+  if (fs.existsSync(path.join(BASE_DIR, '.git'))) return;
+  fs.mkdirSync(path.dirname(BASE_DIR), { recursive: true });
+  await run(session, 'git', 'git', ['clone', REPO_SSH, BASE_DIR]);
+  await run(session, 'git', 'git', ['checkout', '-b', BASE_BRANCH], { cwd: BASE_DIR });
 }
 
 async function ensureRepo(session) {
   const dir = repoDir(session);
   if (fs.existsSync(path.join(dir, '.git'))) {
-    sessions.emit(session, 'log', { level: 'info', text: `[git] reusing existing checkout for this session` });
+    sessions.emit(session, 'log', { level: 'info', text: `[git] reusing existing worktree for this session` });
     return dir;
   }
-  fs.mkdirSync(path.dirname(dir), { recursive: true });
   sessions.setStep(session, 'setup');
-  await run(session, 'git', 'git', ['clone', REPO_SSH, dir]);
-  await run(session, 'git', 'git', ['checkout', '-b', session.branch], { cwd: dir });
+  await ensureBaseRepo(session);
+  fs.mkdirSync(path.dirname(dir), { recursive: true });
+  await run(session, 'git', 'git', ['worktree', 'add', '-b', session.branch, dir, BASE_BRANCH], { cwd: BASE_DIR });
   return dir;
 }
 
@@ -76,6 +90,10 @@ async function commitAndPush(session, dir, message) {
   }
   await run(session, 'git', 'git', ['commit', '-m', commitMessage(message)], { cwd: dir });
   await run(session, 'git', 'git', ['push', '-u', 'origin', session.branch], { cwd: dir });
+
+  // fast-forward the shared base branch so the next session's worktree starts
+  // from this work instead of redoing it (e.g. re-scaffolding ui/ every time)
+  await run(session, 'git', 'git', ['branch', '-f', BASE_BRANCH, session.branch], { cwd: BASE_DIR });
   return true;
 }
 
