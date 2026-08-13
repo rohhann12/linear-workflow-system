@@ -114,6 +114,7 @@ function runClaudeAgent({ session, label, cwd, prompt }) {
     );
 
     let buffer = '';
+    let stderrText = '';
     let lastResult = { success: false, summary: 'no result' };
 
     child.stdout.on('data', (chunk) => {
@@ -133,15 +134,14 @@ function runClaudeAgent({ session, label, cwd, prompt }) {
     });
 
     child.stderr.on('data', (chunk) => {
-      sessions.emit(session, 'log', {
-        level: 'error',
-        text: `[${label}] ${truncate(chunk.toString().trim(), 300)}`,
-      });
+      const text = chunk.toString().trim();
+      stderrText += text + '\n';
+      sessions.emit(session, 'log', { level: 'error', text: `[${label}] ${truncate(text, 300)}` });
     });
 
     child.on('error', (err) => {
       sessions.emit(session, 'log', { level: 'error', text: `[${label}] failed to start: ${err.message}` });
-      resolve({ success: false, summary: err.message });
+      resolve({ success: false, summary: err.message, stderr: '' });
     });
 
     child.on('close', (code) => {
@@ -157,7 +157,7 @@ function runClaudeAgent({ session, label, cwd, prompt }) {
         level: success ? 'info' : 'error',
         text: `[${label}] ${success ? 'done' : 'failed'} — ${lastResult.summary}`,
       });
-      resolve({ success, summary: lastResult.summary });
+      resolve({ success, summary: lastResult.summary, stderr: stderrText });
     });
 
     function handleEvent(event) {

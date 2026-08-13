@@ -9,6 +9,7 @@ const REPO_SSH = process.env.GITHUB_REPO_SSH || 'git@github.com:rohhann12/subsea
 const REPO_SLUG = process.env.GITHUB_REPO || 'rohhann12/subsearch';
 const WORKSPACE_ROOT = path.resolve(__dirname, process.env.WORKSPACE_DIR || '../../../workspace');
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const AUTH_FAILURE = /not logged in/i;
 
 const BASE_DIR = path.join(WORKSPACE_ROOT, '_base', 'subsearch');
 
@@ -86,8 +87,12 @@ function commitMessage(text) {
 async function commitAndPush(session, dir, message, title) {
   await run(session, 'git', 'git', ['add', '-A'], { cwd: dir });
   const status = await run(session, 'git', 'git', ['status', '--porcelain'], { cwd: dir });
-  if (!status.stdout.trim()) {
-    sessions.emit(session, 'log', { level: 'warn', text: '[git] nothing to commit' });
+  // A new screenshot alone isn't a real change worth a PR — only count it if
+  // something outside .jerry-screenshots/ also changed.
+  const realChanges = status.stdout.split('\n').filter((l) => l.trim() && !l.includes('.jerry-screenshots/'));
+  if (realChanges.length === 0) {
+    sessions.emit(session, 'log', { level: 'warn', text: '[git] nothing to commit (no real code changes)' });
+    await run(session, 'git', 'git', ['reset', '--hard', 'HEAD'], { cwd: dir });
     return false;
   }
   await run(session, 'git', 'git', ['commit', '-m', title], { cwd: dir });
@@ -183,6 +188,14 @@ async function runPipeline(session, message) {
     });
     if (!setup.success) {
       sessions.emit(session, 'log', { level: 'warn', text: '[setup] agent reported an issue, continuing anyway' });
+    }
+    if (AUTH_FAILURE.test(setup.stderr || '')) {
+      sessions.addMessage(
+        session,
+        'jerry',
+        "Claude Code isn't authenticated on this machine right now, so I can't actually make changes. Someone needs to SSH in and run `claude` to log in again."
+      );
+      return;
     }
 
     sessions.setStep(session, 'backend+frontend');
