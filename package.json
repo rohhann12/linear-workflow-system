@@ -1,16 +1,15 @@
 {
-  "name": "jerry-orchestrator",
+  "name": "linear-workflow-system",
   "version": "0.1.0",
-  "description": "Linear-triggered Claude Code cloud agent orchestrator",
-  "type": "commonjs",
-  "main": "server.js",
+  "private": true,
+  "description": "Tag a Linear issue with 'jerry' and a fleet of Claude Code agents clones the repo, builds it, runs it in Docker, screenshots it, and opens a PR.",
+  "workspaces": [
+    "apps/*",
+    "services/*"
+  ],
   "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "chalk": "^4.1.2",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "playwright": "^1.62.1"
+    "dev": "npm run start --workspace services/orchestrator",
+    "start": "npm run start --workspace services/orchestrator",
+    "build:web": "npm run build --workspace apps/web"
   }
 }

@@ -9,7 +9,7 @@ const { runPipeline } = require('./pipeline');
 const PORT = process.env.PORT || 3333;
 const app = express();
 
-app.use(express.static(path.join(__dirname, 'web', 'dist')));
+app.use(express.static(path.join(__dirname, '..', '..', 'apps', 'web', 'dist')));
 app.use('/webhook', express.raw({ type: '*/*' }));
 app.use(express.json());
 

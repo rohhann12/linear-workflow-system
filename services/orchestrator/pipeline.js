@@ -7,7 +7,7 @@ const { commentOnIssue } = require('./linear');
 
 const REPO_SSH = process.env.GITHUB_REPO_SSH || 'git@github.com:rohhann12/subsearch.git';
 const REPO_SLUG = process.env.GITHUB_REPO || 'rohhann12/subsearch';
-const WORKSPACE_ROOT = path.resolve(__dirname, process.env.WORKSPACE_DIR || '../workspace');
+const WORKSPACE_ROOT = path.resolve(__dirname, process.env.WORKSPACE_DIR || '../../../workspace');
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 const BASE_DIR = path.join(WORKSPACE_ROOT, '_base', 'subsearch');

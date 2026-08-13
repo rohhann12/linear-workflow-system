@@ -29,18 +29,27 @@ Every session gets its own git worktree branched fresh off `main` (not off anoth
 ## Stack
 
 - **Backend**: Node/Express — session queue, Linear webhook receiver (HMAC-verified), REST API, SSE log stream
-- **Frontend** (`web/`): React + Vite + Tailwind v4 + [shadcn/ui](https://ui.shadcn.com)
+- **Frontend**: React + Vite + Tailwind v4 + [shadcn/ui](https://ui.shadcn.com)
 - **Agents**: headless Claude Code (`claude -p --output-format stream-json`), one per concern (setup / backend / frontend), run concurrently where safe
 - **Verification**: real Docker Compose stack + Playwright screenshot of the running app, embedded directly in the PR
 
-## Pieces
+## Project structure
 
-- **`server.js`** — Express app: Linear webhook receiver, session REST API, SSE log stream, serves the built UI
-- **`sessions.js`** — one queue per session (one Linear issue, or one chat) so concurrent messages queue instead of racing
-- **`pipeline.js`** — the actual workflow: git worktree → setup agent → backend + frontend agents in parallel → `docker compose up` → health check → screenshot → commit/push → PR
-- **`agents.js`** — spawns and streams headless Claude Code sub-agents
-- **`linear.js`** — comments the resulting PR link back onto the originating Linear issue
-- **`web/`** — the chat UI: session list, live transcript, SSE-streamed logs, compose box, landing page
+```
+.
+├── apps/
+│   └── web/              # React + Vite + shadcn/ui chat UI
+├── services/
+│   └── orchestrator/     # Express backend — the actual workflow engine
+│       ├── server.js     # webhook receiver, REST API, SSE stream, serves apps/web/dist
+│       ├── sessions.js   # per-session queue (Linear issue or chat)
+│       ├── pipeline.js   # git worktree → agents → docker → screenshot → PR
+│       ├── agents.js     # spawns/streams headless Claude Code sub-agents
+│       └── linear.js     # comments the resulting PR link back onto the issue
+└── .github/workflows/    # CI: builds both workspaces on every push/PR
+```
+
+This is an npm workspaces monorepo — a single `npm install` at the root wires up both packages.
 
 ## Trigger
 
@@ -50,9 +59,9 @@ Any Linear comment (or the initial issue title/description) containing the word 
 
 ```bash
 npm install
-cp .env.example .env   # fill in LINEAR_API_KEY, LINEAR_WEBHOOK_SECRET, GITHUB_REPO_SSH
-cd web && npm install && npm run build && cd ..
-npm start               # listens on :3333, serving web/dist
+cp services/orchestrator/.env.example services/orchestrator/.env   # fill in LINEAR_API_KEY, LINEAR_WEBHOOK_SECRET, GITHUB_REPO_SSH
+npm run build:web
+npm start   # listens on :3333, serving apps/web/dist
 ```
 
 Point your Linear webhook (or a local tunnel like ngrok during development) at `<your-url>/webhook/linear`.

@@ -1,4 +1,4 @@
 node_modules/
 .env
 *.log
-web/dist/
+apps/web/dist/
