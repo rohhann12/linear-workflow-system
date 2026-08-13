@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StatusBadge } from './StatusBadge';
-import { ActivityFeed } from './ActivityFeed';
 import { Terminal } from './Terminal';
 import { useTerminalToggle } from '@/hooks/useTerminalToggle';
 import { sendMessage } from '@/lib/api';
@@ -57,17 +56,26 @@ export function ChatView({ session }: { session: Session }) {
           <span className="font-mono text-sm font-medium">{session.id}</span>
           <StatusBadge session={session} />
         </div>
-        <button
-          onClick={() => terminal.setOpen((o) => !o)}
-          className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
-        >
-          Press {terminal.hint} for terminal
-        </button>
+        <div className="flex items-center gap-3">
+          {session.status === 'running' && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+              </span>
+              Still working…
+            </div>
+          )}
+          <button
+            onClick={() => terminal.setOpen((o) => !o)}
+            className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+          >
+            Press {terminal.hint} for terminal
+          </button>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <ActivityFeed session={session} />
-
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-2 p-5">
             {bubbles.map((b) => {
