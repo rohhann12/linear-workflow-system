@@ -13,9 +13,9 @@ export function ActivityFeed({ session }: { session: Session }) {
   }, [items.length]);
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-r">
+    <div className="flex h-full min-h-0 w-80 shrink-0 flex-col border-r">
       <div className="border-b px-4 py-3.5 text-sm font-medium text-muted-foreground">Activity</div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-3 p-4">
           {items.length === 0 && (
             <p className="text-xs text-muted-foreground">Nothing yet — send a message to get started.</p>

@@ -185,4 +185,38 @@ function runClaudeAgent({ session, label, cwd, prompt }) {
   });
 }
 
-module.exports = { runClaudeAgent };
+// One-shot, tool-free text completion — no cwd/worktree/tool access needed,
+// just turns the raw task text into a short, readable title.
+function generateTitle(message, fallback) {
+  return new Promise((resolve) => {
+    const prompt = [
+      'Write a concise git commit / PR title (max 6 words, no trailing period,',
+      "no quotes) summarizing this task. Reply with ONLY the title, nothing else:",
+      `"${truncate(message, 500)}"`,
+    ].join(' ');
+
+    const child = spawn('claude', ['-p', prompt, '--disallowedTools', 'Bash Edit Write Read Glob Grep'], {
+      env: scrubbedEnv(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let out = '';
+    const timer = setTimeout(() => {
+      child.kill();
+      resolve(fallback);
+    }, 30000);
+
+    child.stdout.on('data', (chunk) => (out += chunk.toString()));
+    child.on('error', () => {
+      clearTimeout(timer);
+      resolve(fallback);
+    });
+    child.on('close', () => {
+      clearTimeout(timer);
+      const title = out.trim().split('\n').pop()?.replace(/^["']|["']$/g, '').trim();
+      resolve(title && title.length > 0 && title.length <= 80 ? title : fallback);
+    });
+  });
+}
+
+module.exports = { runClaudeAgent, generateTitle };

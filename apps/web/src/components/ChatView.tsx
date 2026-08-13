@@ -28,7 +28,7 @@ export function ChatView({ session }: { session: Session }) {
   }
 
   return (
-    <div className="flex h-full flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b px-5 py-3.5">
         <div className="flex items-center gap-3">
           <span className="font-mono text-sm font-medium">{session.id}</span>
@@ -45,7 +45,7 @@ export function ChatView({ session }: { session: Session }) {
       <div className="flex min-h-0 flex-1">
         <ActivityFeed session={session} />
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-3 p-5">
             {session.transcript.map((msg) => (
               <div

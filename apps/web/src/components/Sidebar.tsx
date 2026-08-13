@@ -19,7 +19,7 @@ export function Sidebar({
   const sorted = [...sessions].sort((a, b) => b.id.localeCompare(a.id));
 
   return (
-    <div className="flex h-full w-72 flex-col border-r bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full min-h-0 w-72 flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-4 py-3.5">
         <span className="text-2xl">🐺</span>
         <span className="font-semibold">Jerry</span>
@@ -30,7 +30,7 @@ export function Sidebar({
           + New session
         </Button>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-1 px-2 pb-2">
           {sorted.map((s) => (
             <button

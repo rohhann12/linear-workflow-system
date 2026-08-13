@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const sessions = require('./sessions');
 const { run } = require('./exec');
-const { runClaudeAgent } = require('./agents');
-const { commentOnIssue } = require('./linear');
+const { runClaudeAgent, generateTitle } = require('./agents');
+const { commentOnIssue, getIssueRef } = require('./linear');
 
 const REPO_SSH = process.env.GITHUB_REPO_SSH || 'git@github.com:rohhann12/subsearch.git';
 const REPO_SLUG = process.env.GITHUB_REPO || 'rohhann12/subsearch';
@@ -83,32 +83,33 @@ function commitMessage(text) {
   return firstLine.length > 72 ? firstLine.slice(0, 69) + '...' : firstLine;
 }
 
-async function commitAndPush(session, dir, message) {
+async function commitAndPush(session, dir, message, title) {
   await run(session, 'git', 'git', ['add', '-A'], { cwd: dir });
   const status = await run(session, 'git', 'git', ['status', '--porcelain'], { cwd: dir });
   if (!status.stdout.trim()) {
     sessions.emit(session, 'log', { level: 'warn', text: '[git] nothing to commit' });
     return false;
   }
-  await run(session, 'git', 'git', ['commit', '-m', commitMessage(message)], { cwd: dir });
+  await run(session, 'git', 'git', ['commit', '-m', title], { cwd: dir });
   await run(session, 'git', 'git', ['push', '-u', 'origin', session.branch], { cwd: dir });
   return true;
 }
 
-async function openOrUpdatePr(session, dir, message, screenshotRelPath) {
+async function openOrUpdatePr(session, dir, message, screenshotRelPath, title) {
   if (session.prUrl) {
     sessions.emit(session, 'log', { level: 'info', text: `[pr] already open: ${session.prUrl}` });
     return session.prUrl;
   }
-  const body = screenshotRelPath
-    ? [
-        message,
-        '',
-        '### Preview',
-        `![preview](https://raw.githubusercontent.com/${REPO_SLUG}/${session.branch}/${screenshotRelPath})`,
-      ].join('\n')
-    : message;
-  const title = commitMessage(message);
+  const issueRef = await getIssueRef(session);
+  const bodyParts = [message, ''];
+  if (issueRef) bodyParts.push(`Linear: [${issueRef.identifier}](${issueRef.url})`, '');
+  if (screenshotRelPath) {
+    bodyParts.push(
+      '### Preview',
+      `![preview](https://raw.githubusercontent.com/${REPO_SLUG}/${session.branch}/${screenshotRelPath})`
+    );
+  }
+  const body = bodyParts.join('\n');
   const result = await run(session, 'pr', 'gh', [
     'pr',
     'create',
@@ -161,6 +162,11 @@ async function runPipeline(session, message) {
   try {
     const dir = await ensureRepo(session);
 
+    // Kicked off now so it resolves quietly in the background while setup/
+    // backend/frontend/build run — by the time it's needed at the PR step,
+    // minutes have usually passed instead of racing a tight timeout under load.
+    const titlePromise = generateTitle(message, commitMessage(message));
+
     sessions.setStep(session, 'setup');
     const setup = await runClaudeAgent({
       session,
@@ -207,14 +213,18 @@ async function runPipeline(session, message) {
     }
 
     sessions.setStep(session, 'pr');
-    const committed = await commitAndPush(session, dir, message);
+    const title = await titlePromise;
+    if (title === commitMessage(message)) {
+      sessions.emit(session, 'log', { level: 'warn', text: '[pr] title generation fell back to raw message text' });
+    }
+    const committed = await commitAndPush(session, dir, message, title);
     const hadPrBefore = !!session.prUrl;
     let prUrl = session.prUrl;
     if (committed && !screenshotRelPath) {
       sessions.emit(session, 'log', { level: 'warn', text: '[pr] no screenshot captured, opening PR without preview' });
     }
     if (committed || hadPrBefore) {
-      prUrl = await openOrUpdatePr(session, dir, message, screenshotRelPath);
+      prUrl = await openOrUpdatePr(session, dir, message, screenshotRelPath, title);
     }
     if (hadPrBefore && screenshotRelPath) {
       await commentScreenshot(session, dir, screenshotRelPath);

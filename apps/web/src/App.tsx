@@ -34,7 +34,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar sessions={sessions} activeId={activeId} onSelect={setActiveId} onNewSession={handleNewSession} />
       {activeSession ? (
         <ChatView session={activeSession} />
