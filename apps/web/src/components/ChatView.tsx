@@ -92,7 +92,7 @@ export function ChatView({ session }: { session: Session }) {
                         ? 'ml-9 px-3 py-1.5 text-xs text-muted-foreground bg-muted/50'
                         : 'px-3.5 py-2 text-sm',
                       !isNarration && b.role === 'user' && 'bg-primary text-primary-foreground',
-                      !isNarration && b.role === 'jerry' && 'bg-muted'
+                      !isNarration && b.role === 'jerry' && 'bg-card border shadow-sm'
                     )}
                   >
                     {b.text}

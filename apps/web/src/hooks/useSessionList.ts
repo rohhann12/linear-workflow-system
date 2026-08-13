@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { listSessions } from '@/lib/api';
 import type { Session } from '@/lib/types';
 
-export function useSessionList(intervalMs = 4000) {
+export function useSessionList(enabled = true, intervalMs = 4000) {
   const [sessions, setSessions] = useState<Session[]>([]);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const refresh = () => listSessions().then((s) => !cancelled && setSessions(s));
     refresh();
@@ -14,7 +15,7 @@ export function useSessionList(intervalMs = 4000) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [intervalMs]);
+  }, [enabled, intervalMs]);
 
   return sessions;
 }

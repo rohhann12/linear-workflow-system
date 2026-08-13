@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Landing } from '@/components/Landing';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatView } from '@/components/ChatView';
+import { PasswordGate } from '@/components/PasswordGate';
+import { useAuth } from '@/hooks/useAuth';
 import { useSessionList } from '@/hooks/useSessionList';
 import { useSessionStream } from '@/hooks/useSessionStream';
 
@@ -10,12 +12,14 @@ function getInitialSessionId(): string | null {
 }
 
 export default function App() {
+  const auth = useAuth();
   const initial = getInitialSessionId();
   const [entered, setEntered] = useState(!!initial);
   const [activeId, setActiveId] = useState<string | null>(initial);
 
-  const sessions = useSessionList();
-  const activeSession = useSessionStream(activeId);
+  const authed = auth.status === 'authed';
+  const sessions = useSessionList(authed);
+  const activeSession = useSessionStream(authed ? activeId : null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -28,6 +32,9 @@ export default function App() {
     setActiveId(`chat-${Date.now()}`);
     setEntered(true);
   }
+
+  if (auth.status === 'checking') return null;
+  if (auth.status === 'unauthed') return <PasswordGate onSubmit={auth.login} />;
 
   if (!entered) {
     return <Landing sessions={sessions} onEnter={() => setEntered(true)} />;

@@ -36,6 +36,15 @@ export function ActivityFeed({ session }: { session: Session }) {
               )}
             </div>
           ))}
+          {session.status === 'running' && (
+            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+              </span>
+              Still working…
+            </div>
+          )}
           <div ref={endRef} />
         </div>
       </ScrollArea>
