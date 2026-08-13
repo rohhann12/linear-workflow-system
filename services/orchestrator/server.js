@@ -35,66 +35,23 @@ function rateLimited(req) {
 
 const MAX_MESSAGE_LENGTH = 4000;
 
-// Single shared-password gate — this is a demo box for interview reference,
-// not a multi-user system, so a stateless HMAC cookie is enough: no session
-// store, no way to forge it without knowing AUTH_SECRET.
-const SITE_PASSWORD = process.env.SITE_PASSWORD || 'HIRE-ROHAN';
-const AUTH_SECRET = process.env.AUTH_SECRET || SITE_PASSWORD;
-const AUTH_COOKIE = 'jerry_auth';
-
-function authToken() {
-  return crypto.createHmac('sha256', AUTH_SECRET).update('jerry-authenticated').digest('hex');
-}
-
-function parseCookies(header) {
-  const out = {};
-  (header || '').split(';').forEach((pair) => {
-    const idx = pair.indexOf('=');
-    if (idx === -1) return;
-    out[pair.slice(0, idx).trim()] = decodeURIComponent(pair.slice(idx + 1).trim());
-  });
-  return out;
-}
-
-function isAuthed(req) {
-  return parseCookies(req.headers.cookie)[AUTH_COOKIE] === authToken();
-}
-
-function requireAuth(req, res, next) {
-  if (isAuthed(req)) return next();
-  res.status(401).json({ error: 'unauthorized' });
-}
-
-app.get('/auth/status', (req, res) => res.json({ authed: isAuthed(req) }));
-
-app.post('/auth/login', (req, res) => {
-  const { password } = req.body || {};
-  if (password !== SITE_PASSWORD) return res.status(401).json({ error: 'wrong password' });
-  const secure = req.secure ? 'Secure; ' : '';
-  res.setHeader(
-    'Set-Cookie',
-    `${AUTH_COOKIE}=${authToken()}; HttpOnly; ${secure}SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}; Path=/`
-  );
-  res.json({ ok: true });
-});
-
-app.get('/sessions', requireAuth, (req, res) => {
+app.get('/sessions', (req, res) => {
   res.json(sessions.listSessions());
 });
 
-app.get('/sessions/:id', requireAuth, (req, res) => {
+app.get('/sessions/:id', (req, res) => {
   const session = sessions.getSession(req.params.id);
   if (!session) return res.status(404).json({ error: 'not found' });
   res.json(sessions.serializeSession(session));
 });
 
-app.delete('/sessions/:id', requireAuth, (req, res) => {
+app.delete('/sessions/:id', (req, res) => {
   const ok = sessions.deleteSession(req.params.id);
   if (!ok) return res.status(409).json({ error: 'session is still running' });
   res.status(204).end();
 });
 
-app.get('/sessions/:id/stream', requireAuth, (req, res) => {
+app.get('/sessions/:id/stream', (req, res) => {
   const session = sessions.createSession(req.params.id, 'chat');
 
   res.writeHead(200, {
@@ -114,7 +71,7 @@ app.get('/sessions/:id/stream', requireAuth, (req, res) => {
   });
 });
 
-app.post('/sessions/:id/messages', requireAuth, (req, res) => {
+app.post('/sessions/:id/messages', (req, res) => {
   const { text } = req.body;
   if (!text || !text.trim()) return res.status(400).json({ error: 'text required' });
   if (text.length > MAX_MESSAGE_LENGTH) {

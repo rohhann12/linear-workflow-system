@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,9 @@ import { sendMessage, deleteSession } from '@/lib/api';
 import { deriveNarration } from '@/lib/activity';
 import type { Session } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+const PR_OPENED = /opened a PR: (\S+)/i;
+const TROUBLE = /(ran into trouble|something went wrong)/i;
 
 type ChatBubble =
   | { key: string; ts: number; role: 'user' | 'jerry'; text: string; kind: 'message' }
@@ -41,6 +45,24 @@ export function ChatView({ session, onDeleted }: { session: Session; onDeleted: 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ block: 'end' });
   }, [bubbles.length]);
+
+  const seenCount = useRef(session.transcript.length);
+  useEffect(() => {
+    const newMessages = session.transcript.slice(seenCount.current);
+    seenCount.current = session.transcript.length;
+    for (const m of newMessages) {
+      if (m.role !== 'jerry') continue;
+      const pr = PR_OPENED.exec(m.text);
+      if (pr) {
+        toast.success('Pull request opened', {
+          description: session.id,
+          action: { label: 'View', onClick: () => window.open(pr[1], '_blank') },
+        });
+      } else if (TROUBLE.test(m.text)) {
+        toast.error('Something went wrong', { description: m.text });
+      }
+    }
+  }, [session.transcript, session.id]);
 
   async function handleSend() {
     const text = input.trim();
