@@ -6,23 +6,8 @@ Tag a Linear issue (or just say the word "jerry" in a comment) and it gets picke
 
 ## Workflow
 
-```mermaid
-flowchart LR
-    A["Linear issue/comment\nmentions 'jerry'"] -->|"webhook"| B["Orchestrator\nsigns/verifies + parses event"]
-    G["Chat UI compose box"] --> C
-    B --> C["Session queue\n(one job at a time per session)"]
-    C -->|"busy"| Q["Queued\n(status shown live)"]
-    Q --> C
-    C -->|"idle"| D["git worktree off\nfresh main"]
-    D --> E1["Setup agent\n(Claude Code)"]
-    E1 --> E2["Backend agent"]
-    E1 --> E3["Frontend agent"]
-    E2 --> F["docker compose up\n+ health check"]
-    E3 --> F
-    F --> H["Playwright screenshot\nof the running app"]
-    H --> I["commit + push +\nopen/update PR"]
-    C -.->|"SSE log/status stream"| G
-```
+<img width="1606" height="1474" alt="758E6F4B-2AB0-4400-86C9-154A99647564" src="https://github.com/user-attachments/assets/2ade30cd-ae6e-4809-a8d9-a919c23e73c9" />
+
 
 Every session gets its own git worktree branched fresh off `main` (not off another session's unmerged work), so each PR's diff stays scoped to just that change. Worktrees share one persistent local clone, so spinning up a new session doesn't mean re-cloning over the network.
 
