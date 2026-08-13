@@ -4,28 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StatusBadge } from './StatusBadge';
+import { ActivityFeed } from './ActivityFeed';
+import { Terminal } from './Terminal';
+import { useTerminalToggle } from '@/hooks/useTerminalToggle';
 import { sendMessage } from '@/lib/api';
 import type { Session } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const LEVEL_CLASS: Record<string, string> = {
-  error: 'text-red-400',
-  warn: 'text-amber-400',
-  info: 'text-emerald-400',
-};
-
 export function ChatView({ session }: { session: Session }) {
   const [input, setInput] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const terminal = useTerminalToggle();
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ block: 'end' });
   }, [session.transcript.length]);
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ block: 'end' });
-  }, [session.logs.length]);
 
   async function handleSend() {
     const text = input.trim();
@@ -36,45 +29,49 @@ export function ChatView({ session }: { session: Session }) {
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b px-5 py-3.5">
-        <span className="font-mono text-sm font-medium">{session.id}</span>
-        <StatusBadge session={session} />
+      <div className="flex items-center justify-between border-b px-5 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-sm font-medium">{session.id}</span>
+          <StatusBadge session={session} />
+        </div>
+        <button
+          onClick={() => terminal.setOpen((o) => !o)}
+          className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+        >
+          Press {terminal.hint} for terminal
+        </button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-3 p-5">
-          {session.transcript.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn('flex items-end gap-2', msg.role === 'user' ? 'flex-row-reverse self-end' : 'self-start')}
-            >
-              <Avatar className="h-7 w-7 shrink-0">
-                <AvatarFallback className="text-xs">{msg.role === 'user' ? 'U' : '🐺'}</AvatarFallback>
-              </Avatar>
+      <div className="flex min-h-0 flex-1">
+        <ActivityFeed session={session} />
+
+        <ScrollArea className="flex-1">
+          <div className="flex flex-col gap-3 p-5">
+            {session.transcript.map((msg) => (
               <div
+                key={msg.id}
                 className={cn(
-                  'max-w-md rounded-2xl px-3.5 py-2 text-sm leading-relaxed',
-                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  'flex items-end gap-2',
+                  msg.role === 'user' ? 'flex-row-reverse self-end' : 'self-start'
                 )}
               >
-                {msg.text}
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarFallback className="text-xs">{msg.role === 'user' ? 'U' : '🐺'}</AvatarFallback>
+                </Avatar>
+                <div
+                  className={cn(
+                    'max-w-md rounded-2xl px-3.5 py-2 text-sm leading-relaxed',
+                    msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  )}
+                >
+                  {msg.text}
+                </div>
               </div>
-            </div>
-          ))}
-          <div ref={transcriptEndRef} />
-        </div>
-      </ScrollArea>
-
-      <ScrollArea className="h-48 border-t bg-black">
-        <div className="p-3 font-mono text-xs">
-          {session.logs.map((log, i) => (
-            <div key={i} className={cn('whitespace-pre-wrap break-all', LEVEL_CLASS[log.level] ?? 'text-emerald-400')}>
-              {log.text}
-            </div>
-          ))}
-          <div ref={logEndRef} />
-        </div>
-      </ScrollArea>
+            ))}
+            <div ref={transcriptEndRef} />
+          </div>
+        </ScrollArea>
+      </div>
 
       <div className="flex gap-2 border-t p-3">
         <Input
@@ -85,6 +82,8 @@ export function ChatView({ session }: { session: Session }) {
         />
         <Button onClick={handleSend}>Send</Button>
       </div>
+
+      <Terminal logs={session.logs} open={terminal.open} onClose={() => terminal.setOpen(false)} />
     </div>
   );
 }

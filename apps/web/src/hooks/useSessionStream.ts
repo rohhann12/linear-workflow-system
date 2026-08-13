@@ -11,6 +11,7 @@ const EMPTY_SESSION = (id: string): Session => ({
   queuedCount: 0,
   transcript: [],
   logs: [],
+  timeline: [],
   branch: '',
 });
 
@@ -43,6 +44,9 @@ export function useSessionStream(id: string | null) {
         }
         if (payload.type === 'log') {
           return { ...base, logs: [...base.logs, payload] };
+        }
+        if (payload.type === 'timeline') {
+          return { ...base, timeline: [...base.timeline, { step: payload.step, ts: payload.ts }] };
         }
         if (payload.type === 'status') {
           return {

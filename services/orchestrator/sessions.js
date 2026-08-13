@@ -23,6 +23,7 @@ function createSession(id, source, linearIssueId) {
     queue: [],
     transcript: [],
     logs: [],
+    timeline: [],
     branch: `jerry/${id}`,
     emitter: new EventEmitter(),
   };
@@ -49,6 +50,7 @@ function serializeSession(session) {
     queuedCount: session.queue.length,
     transcript: session.transcript,
     logs: session.logs,
+    timeline: session.timeline,
     branch: session.branch,
   };
 }
@@ -111,7 +113,10 @@ function finish(session) {
 
 function setStep(session, step) {
   session.currentStep = step;
+  const entry = { step, ts: Date.now() };
+  session.timeline.push(entry);
   emit(session, 'status', { status: 'running', step, queued: session.queue.length });
+  session.emitter.emit('event', { type: 'timeline', ts: entry.ts, step });
 }
 
 module.exports = {

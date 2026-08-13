@@ -46,6 +46,7 @@ const ALLOWED_TOOLS = [
   'Bash(wc *)',
   'Bash(pwd)',
   'Bash(echo *)',
+  'Bash(curl *)',
   'Bash(mkdir *)',
   'Bash(mv *)',
   'Bash(cp *)',
@@ -61,7 +62,6 @@ const ALLOWED_TOOLS = [
 ].join(' ');
 
 const DISALLOWED_TOOLS = [
-  'Bash(curl *)',
   'Bash(wget *)',
   'Bash(nc *)',
   'Bash(ssh *)',

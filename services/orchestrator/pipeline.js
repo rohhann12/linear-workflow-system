@@ -36,7 +36,6 @@ async function ensureRepo(session) {
     sessions.emit(session, 'log', { level: 'info', text: `[git] reusing existing worktree for this session` });
     return dir;
   }
-  sessions.setStep(session, 'setup');
   await ensureBaseRepo(session);
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   await run(session, 'git', 'git', ['worktree', 'add', '-b', session.branch, dir, 'main'], { cwd: BASE_DIR });
