@@ -67,6 +67,17 @@ function getSession(id) {
   return sessions.get(id);
 }
 
+// Returns false (and leaves it alone) if the session is mid-run — deleting
+// out from under an active pipeline would orphan it with nowhere to report.
+function deleteSession(id) {
+  const session = sessions.get(id);
+  if (!session) return true;
+  if (session.status === 'running') return false;
+  sessions.delete(id);
+  persistence.remove(id);
+  return true;
+}
+
 function listSessions() {
   return Array.from(sessions.values()).map(serializeSession);
 }

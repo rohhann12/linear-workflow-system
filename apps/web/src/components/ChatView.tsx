@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { StatusBadge } from './StatusBadge';
 import { Terminal } from './Terminal';
 import { useTerminalToggle } from '@/hooks/useTerminalToggle';
-import { sendMessage } from '@/lib/api';
+import { sendMessage, deleteSession } from '@/lib/api';
 import { deriveNarration } from '@/lib/activity';
 import type { Session } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,7 @@ type ChatBubble =
   | { key: string; ts: number; role: 'user' | 'jerry'; text: string; kind: 'message' }
   | { key: string; ts: number; role: 'jerry'; text: string; kind: 'narration' };
 
-export function ChatView({ session }: { session: Session }) {
+export function ChatView({ session, onDeleted }: { session: Session; onDeleted: () => void }) {
   const [input, setInput] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const terminal = useTerminalToggle();
@@ -49,6 +49,13 @@ export function ChatView({ session }: { session: Session }) {
     await sendMessage(session.id, text);
   }
 
+  async function handleDelete() {
+    if (!window.confirm(`Delete session "${session.id}"? This can't be undone.`)) return;
+    const ok = await deleteSession(session.id);
+    if (ok) onDeleted();
+    else window.alert("Can't delete — this session is still running.");
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b px-5 py-3.5">
@@ -71,6 +78,13 @@ export function ChatView({ session }: { session: Session }) {
             className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
           >
             Press {terminal.hint} for terminal
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={session.status === 'running'}
+            className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+          >
+            Delete
           </button>
         </div>
       </div>

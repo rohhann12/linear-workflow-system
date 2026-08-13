@@ -88,6 +88,12 @@ app.get('/sessions/:id', requireAuth, (req, res) => {
   res.json(sessions.serializeSession(session));
 });
 
+app.delete('/sessions/:id', requireAuth, (req, res) => {
+  const ok = sessions.deleteSession(req.params.id);
+  if (!ok) return res.status(409).json({ error: 'session is still running' });
+  res.status(204).end();
+});
+
 app.get('/sessions/:id/stream', requireAuth, (req, res) => {
   const session = sessions.createSession(req.params.id, 'chat');
 

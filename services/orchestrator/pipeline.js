@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const sessions = require('./sessions');
 const { run } = require('./exec');
-const { runClaudeAgent, generateTitle } = require('./agents');
+const { runClaudeAgent, generateTitle, classifyMessage } = require('./agents');
 const { commentOnIssue, getIssueRef } = require('./linear');
 
 const REPO_SSH = process.env.GITHUB_REPO_SSH || 'git@github.com:rohhann12/subsearch.git';
@@ -160,6 +160,13 @@ async function commentScreenshot(session, dir, screenshotRelPath) {
 
 async function runPipeline(session, message) {
   try {
+    sessions.emit(session, 'log', { level: 'info', text: '[jerry] checking whether this needs any code changes…' });
+    const intent = await classifyMessage(message);
+    if (!intent.actionable) {
+      sessions.addMessage(session, 'jerry', intent.reply || "Hey! Let me know what you'd like me to build.");
+      return;
+    }
+
     const dir = await ensureRepo(session);
 
     // Kicked off now so it resolves quietly in the background while setup/

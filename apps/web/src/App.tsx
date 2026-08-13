@@ -44,7 +44,7 @@ export default function App() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar sessions={sessions} activeId={activeId} onSelect={setActiveId} onNewSession={handleNewSession} />
       {activeSession ? (
-        <ChatView session={activeSession} />
+        <ChatView session={activeSession} onDeleted={() => setActiveId(null)} />
       ) : (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           Select or create a session to talk to Jerry.

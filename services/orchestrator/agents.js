@@ -219,4 +219,48 @@ function generateTitle(message, fallback) {
   });
 }
 
-module.exports = { runClaudeAgent, generateTitle };
+// Cheap, tool-free gate before committing to the full clone/build/PR
+// pipeline: is this actually a coding request, or just chit-chat ("hi",
+// "thanks", a question)? Defaults to treating it as actionable on any
+// failure/ambiguity — better to run the pipeline unnecessarily than to
+// silently drop a real request.
+function classifyMessage(message) {
+  return new Promise((resolve) => {
+    const fallback = { actionable: true, reply: null };
+    const prompt = [
+      'A user sent this message to a coding agent named Jerry that clones a repo, writes code,',
+      'and opens a PR: "' + truncate(message, 500) + '".',
+      'If it describes an actual feature/bug/change to make, reply with exactly: CODE',
+      "Otherwise (greetings, thanks, questions, small talk, anything with nothing to build),",
+      'reply with: CHAT: <a short, friendly one-sentence reply as Jerry>',
+      'Reply with nothing else.',
+    ].join(' ');
+
+    const child = spawn('claude', ['-p', prompt, '--disallowedTools', 'Bash Edit Write Read Glob Grep'], {
+      env: scrubbedEnv(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let out = '';
+    const timer = setTimeout(() => {
+      child.kill();
+      resolve(fallback);
+    }, 20000);
+
+    child.stdout.on('data', (chunk) => (out += chunk.toString()));
+    child.on('error', () => {
+      clearTimeout(timer);
+      resolve(fallback);
+    });
+    child.on('close', () => {
+      clearTimeout(timer);
+      const line = out.trim().split('\n').pop()?.trim() ?? '';
+      if (/^CODE$/i.test(line)) return resolve({ actionable: true, reply: null });
+      const chatMatch = /^CHAT:\s*(.+)/is.exec(line);
+      if (chatMatch) return resolve({ actionable: false, reply: chatMatch[1].trim() });
+      resolve(fallback);
+    });
+  });
+}
+
+module.exports = { runClaudeAgent, generateTitle, classifyMessage };

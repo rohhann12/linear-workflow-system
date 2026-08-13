@@ -18,3 +18,8 @@ export async function sendMessage(id: string, text: string): Promise<Session> {
   });
   return res.json();
 }
+
+export async function deleteSession(id: string): Promise<boolean> {
+  const res = await fetch(`/sessions/${id}`, { method: 'DELETE' });
+  return res.ok;
+}

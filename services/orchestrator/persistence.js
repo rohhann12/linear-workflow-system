@@ -19,6 +19,14 @@ function save(session) {
   }
 }
 
+function remove(id) {
+  try {
+    fs.rmSync(filePath(id), { force: true });
+  } catch (err) {
+    console.error(`[persistence] failed to remove session ${id}: ${err.message}`);
+  }
+}
+
 function loadAll() {
   return fs
     .readdirSync(DATA_DIR)
@@ -34,4 +42,4 @@ function loadAll() {
     .filter(Boolean);
 }
 
-module.exports = { save, loadAll };
+module.exports = { save, loadAll, remove };
