@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { deriveActivity } from '@/lib/activity';
 import type { Session } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export function ActivityFeed({ session }: { session: Session }) {
   const items = useMemo(() => deriveActivity(session), [session.timeline, session.logs, session.transcript]);
@@ -19,25 +20,38 @@ export function ActivityFeed({ session }: { session: Session }) {
           {items.length === 0 && (
             <p className="text-xs text-muted-foreground">Nothing yet — send a message to get started.</p>
           )}
-          {items.map((item) => (
-            <div key={item.key} className="flex items-start gap-2.5 text-sm">
-              <span className="text-base leading-none">{item.icon}</span>
-              <div className="min-w-0 flex-1">
-                {item.link ? (
-                  <a
-                    href={item.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="break-words font-medium text-primary underline underline-offset-2"
-                  >
-                    {item.text}
-                  </a>
-                ) : (
-                  <span className="break-words leading-snug">{item.text}</span>
-                )}
+          {items.map((item) => {
+            const isDetail = item.variant === 'detail';
+            return (
+              <div
+                key={item.key}
+                className={cn('flex items-start gap-2', isDetail ? 'pl-4 text-xs' : 'text-sm')}
+              >
+                <span className={cn('leading-none', isDetail ? 'text-xs' : 'text-base')}>{item.icon}</span>
+                <div className="min-w-0 flex-1">
+                  {item.link ? (
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-words font-medium text-primary underline underline-offset-2"
+                    >
+                      {item.text}
+                    </a>
+                  ) : (
+                    <span
+                      className={cn(
+                        'break-words leading-snug',
+                        isDetail ? 'text-muted-foreground' : 'font-medium'
+                      )}
+                    >
+                      {item.text}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={endRef} />
         </div>
       </ScrollArea>
