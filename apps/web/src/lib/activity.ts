@@ -9,9 +9,6 @@ export interface NarrationNote {
 const NARRATION = /^\[(setup|backend|frontend)\] (?!→)(.+)/;
 const SKIP_NARRATION = /^(starting…|starting\.\.\.)$/i;
 
-// The agent's own running commentary — meant to be dropped into the chat
-// panel as lightweight Jerry bubbles so it reads like it's actually talking
-// to you, not like a separate activity log.
 export function deriveNarration(session: Pick<Session, 'logs'>): NarrationNote[] {
   const notes: NarrationNote[] = [];
   for (const log of session.logs) {

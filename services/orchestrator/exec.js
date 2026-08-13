@@ -1,9 +1,6 @@
 const { spawn } = require('child_process');
 const sessions = require('./sessions');
 
-// Runs a command, streaming stdout/stderr lines to the session log.
-// Resolves { code, stdout } — never rejects on non-zero exit so callers can
-// decide how to handle failures.
 function run(session, label, command, args, opts = {}) {
   return new Promise((resolve) => {
     sessions.emit(session, 'log', { level: 'info', text: `[${label}] $ ${command} ${args.join(' ')}` });

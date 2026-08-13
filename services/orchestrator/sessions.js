@@ -4,19 +4,10 @@ const persistence = require('./persistence');
 
 const LEVEL_COLOR = { info: chalk.green, warn: chalk.yellow, error: chalk.red };
 
-// sessionId -> {
-//   id, source ('chat'|'linear'), linearIssueId, status ('idle'|'running'),
-//   currentStep, queue: [{id, text, createdAt}], transcript: [{role, text, ts}],
-//   emitter, branch
-// }
 const sessions = new Map();
 let nextMessageId = 1;
 const MAX_LOGS = 1000;
 
-// Rehydrate whatever survived on disk from before this process started.
-// Two passes: first load everything and settle the global message-id
-// counter, then repair any session that was mid-run — the pipeline driving
-// it died with the old process, so there's nothing left actually running.
 const loaded = persistence.loadAll().map((data) => {
   const session = {
     queue: [],
@@ -67,8 +58,6 @@ function getSession(id) {
   return sessions.get(id);
 }
 
-// Returns false (and leaves it alone) if the session is mid-run — deleting
-// out from under an active pipeline would orphan it with nowhere to report.
 function deleteSession(id) {
   const session = sessions.get(id);
   if (!session) return true;
@@ -117,8 +106,6 @@ function addMessage(session, role, text) {
   return msg;
 }
 
-// Returns { queued: boolean, position } — enqueues if busy, otherwise leaves it
-// to the caller to start the pipeline immediately.
 function submit(session, text) {
   const msg = addMessage(session, 'user', text);
   if (session.status === 'running') {

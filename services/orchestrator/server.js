@@ -18,8 +18,6 @@ function log(...args) {
   console.log(chalk.green(`[jerry]`), ...args);
 }
 
-// Lightweight abuse guard on the public compose box: caps how often a given
-// IP can kick off a pipeline run, since each one spends real compute/API cost.
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 10;
 const rateLimitHits = new Map();
@@ -109,7 +107,7 @@ app.post('/webhook/linear', (req, res) => {
     return res.status(400).end();
   }
 
-  res.status(200).end(); // ack immediately, process async
+  res.status(200).end();
 
   const TRIGGER = /\bjerry\b/i;
   const data = payload.data;

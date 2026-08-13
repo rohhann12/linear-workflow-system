@@ -1,8 +1,5 @@
 const sessions = require('./sessions');
 
-// Webhooks only give us the issue's internal UUID, not its human identifier
-// (e.g. TRY-10) or URL — fetch those once per session so PRs can link back
-// to something a reviewer can actually recognize.
 async function getIssueRef(session) {
   if (session.linearRef !== undefined) return session.linearRef;
   const apiKey = process.env.LINEAR_API_KEY;

@@ -8,8 +8,6 @@ function filePath(id) {
   return path.join(DATA_DIR, `${encodeURIComponent(id)}.json`);
 }
 
-// Persists everything except the EventEmitter (which only makes sense at
-// runtime) so a restart can rehydrate sessions instead of losing them.
 function save(session) {
   const { emitter, ...plain } = session;
   try {

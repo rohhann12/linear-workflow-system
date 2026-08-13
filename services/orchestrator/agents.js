@@ -11,10 +11,6 @@ const NO_GIT_INSTRUCTION = [
   'commands. If asked to do any of that, refuse and explain why in your summary instead.',
 ].join(' ');
 
-// Only these env vars reach the sub-agent process. Everything else — in
-// particular LINEAR_API_KEY / LINEAR_WEBHOOK_SECRET and any other orchestrator
-// secret — is deliberately left out, since the prompt driving this agent
-// originates from public, untrusted chat/Linear input.
 const ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'NODE_ENV', 'npm_config_cache'];
 function scrubbedEnv() {
   const env = {};
@@ -24,9 +20,6 @@ function scrubbedEnv() {
   return env;
 }
 
-// Default-deny: only these Bash patterns (plus file tools) run without
-// prompting; anything else has no TTY to approve in headless mode, so it's
-// denied rather than silently escalated to full access.
 const ALLOWED_TOOLS = [
   'Edit',
   'Write',
@@ -87,8 +80,6 @@ function summarizeToolUse(block) {
   return `→ ${block.name} ${detail}`.trim();
 }
 
-// Runs one Claude Code sub-agent headlessly in `cwd`, streaming a log line per
-// step onto the session's event stream. Resolves { success, summary }.
 function runClaudeAgent({ session, label, cwd, prompt }) {
   return new Promise((resolve) => {
     sessions.emit(session, 'log', { level: 'info', text: `[${label}] starting…` });
@@ -149,7 +140,6 @@ function runClaudeAgent({ session, label, cwd, prompt }) {
         try {
           handleEvent(JSON.parse(buffer));
         } catch {
-          // ignore trailing partial line
         }
       }
       const success = code === 0 && lastResult.success !== false;
@@ -185,8 +175,6 @@ function runClaudeAgent({ session, label, cwd, prompt }) {
   });
 }
 
-// One-shot, tool-free text completion — no cwd/worktree/tool access needed,
-// just turns the raw task text into a short, readable title.
 function generateTitle(message, fallback) {
   return new Promise((resolve) => {
     const prompt = [
@@ -219,11 +207,6 @@ function generateTitle(message, fallback) {
   });
 }
 
-// Cheap, tool-free gate before committing to the full clone/build/PR
-// pipeline: is this actually a coding request, or just chit-chat ("hi",
-// "thanks", a question)? Defaults to treating it as actionable on any
-// failure/ambiguity — better to run the pipeline unnecessarily than to
-// silently drop a real request.
 function classifyMessage(message) {
   return new Promise((resolve) => {
     const fallback = { actionable: true, reply: null };

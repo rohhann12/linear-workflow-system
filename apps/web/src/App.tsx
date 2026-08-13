@@ -32,7 +32,7 @@ export default function App() {
 
   return (
     <>
-      <Toaster position="bottom-left" />
+      <Toaster position="bottom-right" />
       {!entered ? (
         <Landing sessions={sessions} onEnter={() => setEntered(true)} />
       ) : (

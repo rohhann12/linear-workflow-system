@@ -17,10 +17,6 @@ function repoDir(session) {
   return path.join(WORKSPACE_ROOT, session.id, 'subsearch');
 }
 
-// One persistent clone shared across sessions (avoids a full re-clone over
-// SSH every time) — but every session's worktree always forks from the
-// latest real `main`, never from another session's unmerged work, so each
-// PR's diff stays scoped to just that session's change.
 async function ensureBaseRepo(session) {
   if (!fs.existsSync(path.join(BASE_DIR, '.git'))) {
     fs.mkdirSync(path.dirname(BASE_DIR), { recursive: true });
@@ -53,7 +49,6 @@ async function waitForHealthy(session, url, timeoutMs = 90000) {
         return true;
       }
     } catch {
-      // not up yet
     }
     await new Promise((r) => setTimeout(r, 2000));
   }
@@ -79,6 +74,17 @@ async function takeScreenshot(session, dir) {
   }
 }
 
+const NOISE = /^(Still working on the previous request|Interrupted by a server restart)/;
+function buildConversationContext(session) {
+  const relevant = session.transcript.filter((m) => !NOISE.test(m.text));
+  const recent = relevant.slice(-12);
+  if (recent.length <= 1) return recent[0]?.text ?? '';
+  return (
+    'Conversation so far in this session (oldest to newest):\n' +
+    recent.map((m) => `${m.role === 'user' ? 'User' : 'Jerry'}: ${m.text}`).join('\n')
+  );
+}
+
 function commitMessage(text) {
   const firstLine = text.split('\n')[0].trim();
   return firstLine.length > 72 ? firstLine.slice(0, 69) + '...' : firstLine;
@@ -87,8 +93,6 @@ function commitMessage(text) {
 async function commitAndPush(session, dir, message, title) {
   await run(session, 'git', 'git', ['add', '-A'], { cwd: dir });
   const status = await run(session, 'git', 'git', ['status', '--porcelain'], { cwd: dir });
-  // A new screenshot alone isn't a real change worth a PR — only count it if
-  // something outside .jerry-screenshots/ also changed.
   const realChanges = status.stdout.split('\n').filter((l) => l.trim() && !l.includes('.jerry-screenshots/'));
   if (realChanges.length === 0) {
     sessions.emit(session, 'log', { level: 'warn', text: '[git] nothing to commit (no real code changes)' });
@@ -133,21 +137,17 @@ async function openOrUpdatePr(session, dir, message, screenshotRelPath, title) {
     return session.prUrl;
   }
 
-  // gh pr create fails if a PR for this branch already exists (e.g. after an
-  // orchestrator restart wiped in-memory session state) — recover by looking it up.
   const existing = await run(session, 'pr', 'gh', ['pr', 'view', session.branch, '--json', 'url'], { cwd: dir });
   try {
     const parsed = JSON.parse(existing.stdout);
     if (parsed.url) {
       session.prUrl = parsed.url;
       sessions.emit(session, 'log', { level: 'info', text: `[pr] found existing PR: ${session.prUrl}` });
-      // the failed `pr create` never delivered this body/screenshot, so post it as a comment instead
       if (screenshotRelPath) {
         await commentScreenshot(session, dir, screenshotRelPath);
       }
     }
   } catch {
-    // no existing PR either — genuinely failed to create one
   }
   return session.prUrl;
 }
@@ -165,8 +165,10 @@ async function commentScreenshot(session, dir, screenshotRelPath) {
 
 async function runPipeline(session, message) {
   try {
+    const context = buildConversationContext(session);
+
     sessions.emit(session, 'log', { level: 'info', text: '[jerry] checking whether this needs any code changes…' });
-    const intent = await classifyMessage(message);
+    const intent = await classifyMessage(context);
     if (!intent.actionable) {
       sessions.addMessage(session, 'jerry', intent.reply || "Hey! Let me know what you'd like me to build.");
       return;
@@ -174,17 +176,14 @@ async function runPipeline(session, message) {
 
     const dir = await ensureRepo(session);
 
-    // Kicked off now so it resolves quietly in the background while setup/
-    // backend/frontend/build run — by the time it's needed at the PR step,
-    // minutes have usually passed instead of racing a tight timeout under load.
-    const titlePromise = generateTitle(message, commitMessage(message));
+    const titlePromise = generateTitle(context, commitMessage(message));
 
     sessions.setStep(session, 'setup');
     const setup = await runClaudeAgent({
       session,
       label: 'setup',
       cwd: dir,
-      prompt: `You're preparing this repo's workspace for a change. Task: "${message}". Install any new dependencies you can already tell are needed and make sure docker-compose config stays consistent. Do NOT implement the feature itself yet — that's handled by other agents next.`,
+      prompt: `You're preparing this repo's workspace for a change. ${context}\n\nInstall any new dependencies you can already tell are needed and make sure docker-compose config stays consistent. Do NOT implement the feature itself yet — that's handled by other agents next.`,
     });
     if (!setup.success) {
       sessions.emit(session, 'log', { level: 'warn', text: '[setup] agent reported an issue, continuing anyway' });
@@ -210,15 +209,15 @@ async function runPipeline(session, message) {
         session,
         label: 'backend',
         cwd: backendDir,
-        prompt: `Implement the backend (Express/TypeScript) changes for: "${message}". Only touch files under this backend/ directory.`,
+        prompt: `Implement the backend (Express/TypeScript) changes. ${context}\n\nOnly touch files under this backend/ directory.`,
       }),
       runClaudeAgent({
         session,
         label: 'frontend',
         cwd: frontendDir,
         prompt: frontendIsNew
-          ? `This ui/ directory is empty — the frontend doesn't exist yet even though docker-compose.yml expects to build it (Next.js app, port 3000, calls NEXT_PUBLIC_API_URL for the backend). Scaffold a minimal Next.js app here (with a Dockerfile matching how backend/Dockerfile is structured) AND implement: "${message}". Only touch files under this ui/ directory.`
-          : `Implement the frontend (Next.js) changes for: "${message}". Only touch files under this ui/ directory.`,
+          ? `This ui/ directory is empty — the frontend doesn't exist yet even though docker-compose.yml expects to build it (Next.js app, port 3000, calls NEXT_PUBLIC_API_URL for the backend). Scaffold a minimal Next.js app here (with a Dockerfile matching how backend/Dockerfile is structured) AND implement the following. ${context}\n\nOnly touch files under this ui/ directory.`
+          : `Implement the frontend (Next.js) changes. ${context}\n\nOnly touch files under this ui/ directory.`,
       }),
     ]);
 
