@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,17 +8,40 @@ import { ActivityFeed } from './ActivityFeed';
 import { Terminal } from './Terminal';
 import { useTerminalToggle } from '@/hooks/useTerminalToggle';
 import { sendMessage } from '@/lib/api';
+import { deriveNarration } from '@/lib/activity';
 import type { Session } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+type ChatBubble =
+  | { key: string; ts: number; role: 'user' | 'jerry'; text: string; kind: 'message' }
+  | { key: string; ts: number; role: 'jerry'; text: string; kind: 'narration' };
 
 export function ChatView({ session }: { session: Session }) {
   const [input, setInput] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const terminal = useTerminalToggle();
 
+  const bubbles = useMemo<ChatBubble[]>(() => {
+    const messages: ChatBubble[] = session.transcript.map((m) => ({
+      key: `msg-${m.id}`,
+      ts: m.ts,
+      role: m.role,
+      text: m.text,
+      kind: 'message',
+    }));
+    const narration: ChatBubble[] = deriveNarration(session).map((n) => ({
+      key: n.key,
+      ts: n.ts,
+      role: 'jerry',
+      text: n.text,
+      kind: 'narration',
+    }));
+    return [...messages, ...narration].sort((a, b) => a.ts - b.ts);
+  }, [session.transcript, session.logs]);
+
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ block: 'end' });
-  }, [session.transcript.length]);
+  }, [bubbles.length]);
 
   async function handleSend() {
     const text = input.trim();
@@ -46,28 +69,37 @@ export function ChatView({ session }: { session: Session }) {
         <ActivityFeed session={session} />
 
         <ScrollArea className="min-h-0 flex-1">
-          <div className="flex flex-col gap-3 p-5">
-            {session.transcript.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  'flex items-end gap-2',
-                  msg.role === 'user' ? 'flex-row-reverse self-end' : 'self-start'
-                )}
-              >
-                <Avatar className="h-7 w-7 shrink-0">
-                  <AvatarFallback className="text-xs">{msg.role === 'user' ? 'U' : '🐺'}</AvatarFallback>
-                </Avatar>
+          <div className="flex flex-col gap-2 p-5">
+            {bubbles.map((b) => {
+              const isNarration = b.kind === 'narration';
+              return (
                 <div
+                  key={b.key}
                   className={cn(
-                    'max-w-md rounded-2xl px-3.5 py-2 text-sm leading-relaxed',
-                    msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                    'flex items-end gap-2',
+                    b.role === 'user' ? 'flex-row-reverse self-end' : 'self-start'
                   )}
                 >
-                  {msg.text}
+                  {!isNarration && (
+                    <Avatar className="h-7 w-7 shrink-0">
+                      <AvatarFallback className="text-xs">{b.role === 'user' ? 'U' : '🐺'}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div
+                    className={cn(
+                      'max-w-md rounded-2xl leading-relaxed',
+                      isNarration
+                        ? 'ml-9 px-3 py-1.5 text-xs text-muted-foreground bg-muted/50'
+                        : 'px-3.5 py-2 text-sm',
+                      !isNarration && b.role === 'user' && 'bg-primary text-primary-foreground',
+                      !isNarration && b.role === 'jerry' && 'bg-muted'
+                    )}
+                  >
+                    {b.text}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={transcriptEndRef} />
           </div>
         </ScrollArea>
