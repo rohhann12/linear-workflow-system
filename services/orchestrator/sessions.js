@@ -1,5 +1,6 @@
 const { EventEmitter } = require('events');
 const chalk = require('chalk');
+const persistence = require('./persistence');
 
 const LEVEL_COLOR = { info: chalk.green, warn: chalk.yellow, error: chalk.red };
 
@@ -11,6 +12,35 @@ const LEVEL_COLOR = { info: chalk.green, warn: chalk.yellow, error: chalk.red };
 const sessions = new Map();
 let nextMessageId = 1;
 const MAX_LOGS = 1000;
+
+// Rehydrate whatever survived on disk from before this process started.
+// Two passes: first load everything and settle the global message-id
+// counter, then repair any session that was mid-run — the pipeline driving
+// it died with the old process, so there's nothing left actually running.
+const loaded = persistence.loadAll().map((data) => {
+  const session = {
+    queue: [],
+    transcript: [],
+    logs: [],
+    timeline: [],
+    ...data,
+    emitter: new EventEmitter(),
+  };
+  session.emitter.setMaxListeners(50);
+  sessions.set(session.id, session);
+  for (const msg of session.transcript) {
+    if (msg.id >= nextMessageId) nextMessageId = msg.id + 1;
+  }
+  return session;
+});
+
+for (const session of loaded) {
+  if (session.status !== 'running') continue;
+  session.status = 'idle';
+  session.currentStep = null;
+  session.queue = [];
+  addMessage(session, 'jerry', 'Interrupted by a server restart before this finished — send a message to retry.');
+}
 
 function createSession(id, source, linearIssueId) {
   if (sessions.has(id)) return sessions.get(id);
@@ -29,6 +59,7 @@ function createSession(id, source, linearIssueId) {
   };
   session.emitter.setMaxListeners(50);
   sessions.set(id, session);
+  persistence.save(session);
   return session;
 }
 
@@ -64,6 +95,7 @@ function emit(session, type, data) {
     const color = LEVEL_COLOR[data.level] || chalk.green;
     console.log(color(`[${session.id}] ${data.text}`));
   }
+  persistence.save(session);
   return payload;
 }
 
@@ -117,6 +149,7 @@ function setStep(session, step) {
   session.timeline.push(entry);
   emit(session, 'status', { status: 'running', step, queued: session.queue.length });
   session.emitter.emit('event', { type: 'timeline', ts: entry.ts, step });
+  persistence.save(session);
 }
 
 module.exports = {
