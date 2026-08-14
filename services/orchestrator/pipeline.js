@@ -13,6 +13,21 @@ const AUTH_FAILURE = /not logged in/i;
 
 const BASE_DIR = path.join(WORKSPACE_ROOT, '_base', 'subsearch');
 
+const STACK_CONTAINERS = ['ui', 'backend', 'embedding-service', 'chromadb'];
+let dockerLock = Promise.resolve();
+function withDockerLock(fn) {
+  const result = dockerLock.then(fn, fn);
+  dockerLock = result.then(
+    () => {},
+    () => {}
+  );
+  return result;
+}
+
+async function resetStack(session) {
+  await run(session, 'docker', 'docker', ['rm', '-f', ...STACK_CONTAINERS]);
+}
+
 function repoDir(session) {
   return path.join(WORKSPACE_ROOT, session.id, 'subsearch');
 }
@@ -222,14 +237,23 @@ async function runPipeline(session, message) {
     ]);
 
     sessions.setStep(session, 'build');
-    await run(session, 'docker', 'docker', ['compose', 'up', '-d', '--build'], { cwd: dir });
-    const healthy = await waitForHealthy(session, APP_URL);
-
-    let screenshotRelPath = null;
-    if (healthy) {
-      sessions.setStep(session, 'screenshot');
-      screenshotRelPath = await takeScreenshot(session, dir);
-    }
+    const { healthy, screenshotRelPath } = await withDockerLock(async () => {
+      await resetStack(session);
+      const build = await run(session, 'docker', 'docker', ['compose', 'up', '-d', '--build'], { cwd: dir });
+      if (build.code !== 0) {
+        sessions.emit(session, 'log', { level: 'error', text: '[docker] compose up --build failed, skipping screenshot' });
+        await resetStack(session);
+        return { healthy: false, screenshotRelPath: null };
+      }
+      const isHealthy = await waitForHealthy(session, APP_URL);
+      let shot = null;
+      if (isHealthy) {
+        sessions.setStep(session, 'screenshot');
+        shot = await takeScreenshot(session, dir);
+      }
+      await resetStack(session);
+      return { healthy: isHealthy, screenshotRelPath: shot };
+    });
 
     sessions.setStep(session, 'pr');
     const title = await titlePromise;

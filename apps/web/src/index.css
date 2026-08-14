@@ -128,3 +128,22 @@
     @apply font-sans;
     }
 }
+
+@keyframes blob-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.08); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes blob-slower {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(1.1); }
+}
+
+.animate-blob-slow {
+  animation: blob-slow 18s ease-in-out infinite;
+}
+
+.animate-blob-slower {
+  animation: blob-slower 24s ease-in-out infinite;
+}
