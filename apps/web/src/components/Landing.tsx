@@ -24,14 +24,6 @@ export function Landing({ sessions, onEnter }: { sessions: Session[]; onEnter: (
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-[#07070a] text-zinc-50">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="animate-blob-slow absolute -left-32 -top-40 h-[520px] w-[520px] rounded-full bg-violet-600/30 blur-[120px]" />
-        <div className="animate-blob-slower absolute -right-40 top-1/3 h-[480px] w-[480px] rounded-full bg-sky-500/20 blur-[120px]" />
-        <div className="animate-blob-slow absolute bottom-[-160px] left-1/3 h-[420px] w-[420px] rounded-full bg-emerald-400/20 blur-[120px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#07070a_72%)]" />
-        <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:56px_56px]" />
-      </div>
-
       <header className="relative z-10 flex items-center justify-between px-8 py-6">
         <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
           <span className="text-lg leading-none">🐺</span> Jerry
@@ -59,9 +51,7 @@ export function Landing({ sessions, onEnter }: { sessions: Session[]; onEnter: (
         <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
           Tag a ticket.
           <br />
-          <span className="bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
-            Wake up to a PR.
-          </span>
+          <span className="text-zinc-400">Wake up to a PR.</span>
         </h1>
         <p className="mx-auto mt-5 max-w-lg text-balance text-sm leading-relaxed text-zinc-400 sm:text-base">
           Mention Jerry on a Linear ticket, or just start chatting — it clones the repo, writes the code across
